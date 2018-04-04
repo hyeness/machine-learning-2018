@@ -17,7 +17,6 @@ ALLEY_LIGHTS = 'Data/alley_lights.csv'
 VACANT = 'Data/vacant.csv'
 
 def load_data(FILENAME, start='01/01/2017', end='12/31/2017'):
-
     df = pd.read_csv(FILENAME)
     start_date = datetime.strptime(start, "%m/%d/%Y")
     end_date = datetime.strptime(end, "%m/%d/%Y")
@@ -34,7 +33,6 @@ def load_data(FILENAME, start='01/01/2017', end='12/31/2017'):
     return df
 
 def combine_data(start, end):
-
     graffiti = load_data(GRAFFITI, start, end)
     alley_lights = load_data(ALLEY_LIGHTS, start, end)
     vacant = load_data(VACANT, start, end)
@@ -54,7 +52,6 @@ def combine_data(start, end):
     return combined
 
 def clean_vacant(vacant):
-
     vacant = vacant.rename(columns={'Service Request Type': 'Type Of Service Request',
                                     'Date Service Request Was Received': 'Creation Date'})
     vacant['Address Street Number'] = vacant['Address Street Number'].real.astype(int).astype(str)
@@ -64,7 +61,6 @@ def clean_vacant(vacant):
     return vacant
 
 def compute_response_time(combined):
-
     combined['Creation Date'] = pd.to_datetime(combined['Creation Date'], format="%m/%d/%Y")
     combined['Completion Date'] = pd.to_datetime(combined['Completion Date'], format="%m/%d/%Y")
     combined['Response Time'] = combined['Completion Date'] - combined['Creation Date']
@@ -73,7 +69,7 @@ def compute_response_time(combined):
 
 
 def col_to_hist(df, col, label, vertical=False, sort=True):
-
+    # Thank you Ratul Esrar for the pretty graph.
     plt.figure(figsize=(9,6))
 
     if sort:
@@ -93,15 +89,18 @@ def col_to_hist(df, col, label, vertical=False, sort=True):
     plt.title('Request Counts by {}'.format(col))
     plt.show()
 
+
 def create_month_bins(df):
     df['Creation Month'] = df["Creation Date"].apply(lambda x: x.month)
     return df
+
 
 def scatter_map(df, color_by='Type Of Service Request'):
     plt.figure()
     graph = sns.lmplot(x="Longitude", y="Latitude", data=df, fit_reg=False, hue=color_by, scatter_kws={"alpha":0.3,"s":10})
     plt.title("Spatial Distribution by {}".format(color_by))
     plt.show()
+
 
 def scatter(df, request_type, dem_var):
     plt.figure()
@@ -111,11 +110,13 @@ def scatter(df, request_type, dem_var):
     plt.title("Number of {} Requests by {}".format(request_type, dem_var))
     plt.show()
 
+
 #####################
 #    QUESTION 2     #
 #####################
 
 CENSUS_API_KEY = 'f432c22b5284cc5583f011c7b027a78db588402c'
+
 
 def abridged_data():
     last_three= combine_data(start='10/01/2017', end='12/31/2017')
@@ -123,11 +124,10 @@ def abridged_data():
     last_three = last_three.dropna(subset=['Latitude', 'Longitude'])
     return last_three
 
-def get_block(row):
 
+def get_block(row):
     lat = row['Latitude']
     long = row['Longitude']
-
     FIPS_url = 'https://geo.fcc.gov/api/census/block/find?latitude={}&longitude={}&showall=true&format=json'.format(str(lat),str(long))
 
     try:
@@ -138,7 +138,6 @@ def get_block(row):
         #state = FIPS_block[0:2]
         #county = FIPS_block[2:5]
         tract = FIPS_block[5:11]
-
         return tract
 
     except:
@@ -146,11 +145,9 @@ def get_block(row):
 
 
 def generate_FIPS(df):
-
     tract = []
     for i, row in df.iterrows():
         tract.append(get_block(row))
-
     df['FIPS Block Number'] = pd.Series(tract, index=df.index)
 
     return df
@@ -176,9 +173,6 @@ def scrape_census_tract():
 
 
 def join_df(df1, df2):
-    '''
-    join 2 dfs using index
-    '''
     result = pd.concat([df1, df2], axis=1, join='inner')
     result = result.replace('-', np.nan)
     dem_vars = ['Percent White', 'Percent English Only', 'Income', 'Family Size']
@@ -188,8 +182,6 @@ def join_df(df1, df2):
     return result
 
 def demographic_stats(df, request_type, var):
-    '''
-    '''
     filtered = df[(df['Type Of Service Request'] == request_type)]
     summary = filtered[var].groupby(filtered['Zip Code']).describe()
     summary = summary.filter(['count', 'mean'])
