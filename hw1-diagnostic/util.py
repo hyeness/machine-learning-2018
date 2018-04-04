@@ -103,6 +103,13 @@ def scatter_map(df, color_by='Type Of Service Request'):
     plt.title("Spatial Distribution by {}".format(color_by))
     plt.show()
 
+def scatter(df, request_type, dem_var):
+    plt.figure()
+    graph = sns.lmplot(x="count", y="mean", data=df, fit_reg=False, scatter_kws={"alpha":0.3,"s":10})
+    plt.xlabel('Average {}'.format(dem_var))
+    plt.ylabel('Number of Requests')
+    plt.title("Number of {} Requests by {}".format(request_type, dem_var))
+    plt.show()
 
 #####################
 #    QUESTION 2     #
@@ -111,7 +118,7 @@ def scatter_map(df, color_by='Type Of Service Request'):
 CENSUS_API_KEY = 'f432c22b5284cc5583f011c7b027a78db588402c'
 
 def abridged_data():
-    last_three= combine_data(start='09/01/2017', end='12/31/2017')
+    last_three= combine_data(start='10/01/2017', end='12/31/2017')
     last_three = last_three[last_three['Type Of Service Request'] != 'Graffiti Removal']
     last_three = last_three.dropna(subset=['Latitude', 'Longitude'])
     return last_three
@@ -154,6 +161,7 @@ ENGLISH_ONLY = 'DP02_0111PE'
 INCOME = 'DP03_0051E'
 FAMILY_SIZE = 'DP02_0016E'
 
+
 def scrape_census_tract():
     variables = [PCT_YT, ENGLISH_ONLY, INCOME, FAMILY_SIZE]
     variables = ",".join(variables)
@@ -166,6 +174,7 @@ def scrape_census_tract():
 
     return census.set_index('Tract')
 
+
 def join_df(df1, df2):
     '''
     join 2 dfs using index
@@ -175,9 +184,12 @@ def join_df(df1, df2):
     dem_vars = ['Percent White', 'Percent English Only', 'Income', 'Family Size']
     for var in dem_vars:
         result[var] = result[var].astype(float)
+
     return result
 
 def demographic_stats(df, request_type, var):
+    '''
+    '''
     filtered = df[(df['Type Of Service Request'] == request_type)]
     summary = filtered[var].groupby(filtered['Zip Code']).describe()
     summary = summary.filter(['count', 'mean'])
