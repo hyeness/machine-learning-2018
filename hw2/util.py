@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 
@@ -52,7 +52,6 @@ def check_missing(df):
             print(col, num_missing)
 
 
-
 def impute_missing(df, column, fill_type):
     '''
     Fill in missing values using method specified
@@ -63,18 +62,24 @@ def impute_missing(df, column, fill_type):
         df[column].fillna(df[column].mean(), inplace=True)
 
 
+def cap_outlier(df, column, q=0.999):
+    '''
+    cap extreme outliers using quantile specified as max value
+    '''
+    cap = df[column].quantile(q)
+    print('Monthly Income was capped at ${}.'.format(cap))
+    df[column] = df[column].apply(cap_value, args=(cap,))
+
+
 def cap_value(x, cap):
     '''
+    helper function that returns cap for values exceeding it,
+    itself otherwise
     '''
     if x > cap:
         return cap
     else:
         return x
-
-def cap_outlier(df, column):
-    cap = df[column].quantile(.999)
-    df[column] = df[column].apply(cap_value, args=(cap,))
-
 
 ######################
 #    EXPLORE DATA    #
@@ -95,7 +100,7 @@ def density_plot(df, column, dic):
     '''
     Plot density of variable
     '''
-    sns.kdeplot(df[column], shade=True)
+    sns.distplot(df[column])
     plt.title(dic[column])
     plt.show()
 
@@ -108,9 +113,9 @@ def col_to_hist(df, col, label, sort=True):
     else:
         hist_idx = df[col].value_counts(sort=False)
 
-    graph = sns.countplot(y=col, saturation=1, data=df, order=hist_idx.index)
-    plt.xlabel('Number in Sample')
-    plt.ylabel(label)
+    graph = sns.countplot(x=col, saturation=1, data=df, order=hist_idx.index)
+    plt.ylabel('Number in Sample')
+    plt.xlabel(label)
     plt.show()
 
 
@@ -155,7 +160,7 @@ def split_data(df, predicted='SeriousDlqin2yrs', features=FEATURES, test_size=0.
     return x_train, x_test, y_train, y_test
 
 
-def knn_models(x_train, y_train, x_test, y_test, metric='minkowski'):
+def knn_models(x_train, y_train, x_test, y_test, metric='minkowski', threshold=0.5):
     '''
     Returns KNN model with the highest accuracy score
     '''
@@ -164,7 +169,7 @@ def knn_models(x_train, y_train, x_test, y_test, metric='minkowski'):
 
     model_params = []
 
-    for k in range(1, 11):
+    for k in [1, 5, 10, 20, 50, 100]:
         for wfn in ['uniform', 'distance']:
             for p in range(1, 6):
                 knn = KNeighborsClassifier(n_neighbors=k,
@@ -173,7 +178,9 @@ def knn_models(x_train, y_train, x_test, y_test, metric='minkowski'):
                                            weights=wfn)
 
                 knn.fit(x_train, y_train)
-                acc = accuracy_score(y_test, knn.predict(x_test))
+                pred = get_prediction(knn, x_test, y_test, threshold)
+                acc = accuracy_score(y_test, pred[1])
+                print(k, metric, knn.p, wfn, acc)
                 model_params.append((k, metric, knn.p, wfn, acc))
 
                 if acc > score:
@@ -184,9 +191,39 @@ def knn_models(x_train, y_train, x_test, y_test, metric='minkowski'):
 
     return top_model, eval_df
 
-#top_model = knn_models(x_train, y_train, x_test, y_test)
-#result = just_predict(top_model, x_train, y_train, x_test, y_test)
-#result.filter(['actual', 'predicted'])
+
+
+def get_prediction(model, x_test, y_test, threshold=0.5):
+    '''
+    takes a knn model fit on the training data
+    gets prediction on testing data
+    '''
+    #model.fit(x_train, y_train)
+    prob_true = model.predict_proba(x_test)[:, 1]
+    pred = [classify(p, threshold) for p in prob_true]
+    return prob_true, pred
+
+
+def test_results(model, x_test, y_test, threshold=0.5):
+    '''
+    '''
+    result = x_test.copy()
+    prob_true, pred = get_prediction(model, x_test, y_test, threshold)
+    result['actual'] = y_test
+    result['predicted'] = pred
+    result['prob_true'] = prob_true
+    return result
+
+
+def classify(x, threshold):
+    '''
+    helper function classifying prediction as 1 if prob > threshold
+    0 otherwise
+    '''
+    if x > threshold:
+        return 1
+    else:
+        return 0
 
 
 def just_predict(model, x_train, y_train, x_test, y_test):
@@ -200,6 +237,7 @@ def just_predict(model, x_train, y_train, x_test, y_test):
     result['actual'] = y_test
     result['predicted'] = model.predict(x_test)
     return result
+
 
 
 #########################
@@ -218,14 +256,15 @@ def validate(y_true, y_predicted):
     confusion = pd.DataFrame(cm, index=actual, columns=predicted)
     return confusion
 
-def F1_score(val):
+
+def F1_score(confusion_matrix):
     '''
     calculates precision, recall, and F1 score (harmonic mean)
     '''
-    true_positive = val['predicted_yes']['actual_yes']
-    true_negative = val['predicted_no']['actual_no']
-    false_positive = val['predicted_yes']['actual_no']
-    false_negative = val['predicted_no']['actual_yes']
+    true_positive = confusion_matrix['predicted_yes']['actual_yes']
+    true_negative = confusion_matrix['predicted_no']['actual_no']
+    false_positive = confusion_matrix['predicted_yes']['actual_no']
+    false_negative = confusion_matrix['predicted_no']['actual_yes']
 
     precision = true_positive / (true_positive + false_positive)
     recall = true_positive / (true_positive + false_negative)
@@ -235,50 +274,14 @@ def F1_score(val):
     return F1
 
 
-def run_model(model, x_train, y_train, x_test, y_test, threshold=0.5):
-    model.fit(x_train, y_train)
-    prob_true = model.predict_proba(x_test)[:, 0]
-    result = x_test.copy()
-    result['predicted_prob'] = prob_true
-    result['actual'] = y_test
-    result['predicted'] = result['predicted_prob'].apply(classify, args=(threshold,))
-
-    return result
-
-def classify(x, threshold):
-    if x > threshold:
-        return 1
-    else:
-        return 0
-
-
 #if __name__ == "__main__":
     #main()
 
 def main():
-    df = read_file(DATA_FILENAME, 'csv', 'PersonID')
-    df.head()
-    check_missing(df)
-    impute_missing(df, 'NumberOfDependents', 'median')
-    impute_missing(df, 'MonthlyIncome', 'median')
-    #df = discretize_var(df, 'age', 10)
-    df.MonthlyIncome.isnull().any()
-    df.NumberOfDependents = df.NumberOfDependents.astype(int)
-    df.dtypes
-    cap_outlier(df, 'MonthlyIncome')
-    df.MonthlyIncome.max()
-    sns.distplot(df.MonthlyIncome)
-    corr_matrix(df)
-    x_train, x_test, y_train, y_test = split_data(df)
-    x_train.head()
-    top_model = knn_models_try(x_train, y_train, x_test, y_test)
-    result = run_model(top_model, x_train, y_train, x_test, threshold=0.5)
-    result.head()
-    result.classify.value_counts()
-    df.DebtRatio.describe()
-    sns.distplot(df.DebtRatio)
-    result.head()
-    accuracy_score(y_test, result.classify)
-    jp_result = just_predict(top_model, x_train, y_train, x_test, y_test)
-    jp_result.actual.value_counts()
-    accuracy_score(y_test, jp_result.prob_true)
+    top_model, eval_df = knn_models(x_train, y_train, x_test, y_test, metric='minkowski', threshold=0.5)
+    top_model
+    eval_df
+    result = test_results(top_model, x_test, y_test)
+    cm = validate(result.actual, result.predicted)
+    cm
+    F1_score(cm)
