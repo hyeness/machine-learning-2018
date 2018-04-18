@@ -108,6 +108,7 @@ def density_plot(df, column, dic):
 
 def plot_hist(df, col, label, sort=True):
     '''
+    plots histogram of column
     '''
     if sort:
         hist_idx = df[col].value_counts()
@@ -164,11 +165,13 @@ def split_data(df, predicted='SeriousDlqin2yrs', features=FEATURES, test_size=0.
 
 def select_features(data_set, features=FEATURES):
     '''
+    filter data on features provided
     '''
     return data_set.filter(features)
 
 
-def knn_models(x_train, y_train, x_test, y_test, metric='minkowski', threshold=0.5):
+def knn_models(x_train, y_train, x_test, y_test,
+               ks=[[1, 5, 10, 20, 50, 100], metric='minkowski', threshold=0.5):
     '''
     Returns KNN model with the highest accuracy score
     '''
@@ -177,7 +180,7 @@ def knn_models(x_train, y_train, x_test, y_test, metric='minkowski', threshold=0
 
     model_params = []
 
-    for k in [1, 5, 10, 20, 50, 100]:
+    for k in ks:
         for wfn in ['uniform', 'distance']:
             for p in range(1, 6):
                 knn = KNeighborsClassifier(n_neighbors=k,
@@ -214,6 +217,8 @@ def get_prediction(model, x_test, y_test, threshold=0.5):
 
 def test_results(model, x_test, y_test, threshold=0.5):
     '''
+    puts results in dataframe with all features used in testing
+    results include probability of true, classified prediction, and true value
     '''
     result = x_test.copy()
     prob_true, pred = get_prediction(model, x_test, y_test, threshold)
@@ -284,12 +289,3 @@ def F1_score(confusion_matrix):
 
 #if __name__ == "__main__":
     #main()
-
-def main():
-    top_model, eval_df = knn_models(x_train, y_train, x_test, y_test, metric='minkowski', threshold=0.5)
-    top_model
-    eval_df
-    result = test_results(top_model, x_test, y_test)
-    cm = validate(result.actual, result.predicted)
-    cm
-    F1_score(cm)
