@@ -99,13 +99,14 @@ def corr_matrix(df):
 def density_plot(df, column, dic):
     '''
     Plot density of variable
+    Refuses to plot Missing Values
     '''
     sns.distplot(df[column])
     plt.title(dic[column])
     plt.show()
 
 
-def col_to_hist(df, col, label, sort=True):
+def plot_hist(df, col, label, sort=True):
     '''
     '''
     if sort:
@@ -116,6 +117,7 @@ def col_to_hist(df, col, label, sort=True):
     graph = sns.countplot(x=col, saturation=1, data=df, order=hist_idx.index)
     plt.ylabel('Number in Sample')
     plt.xlabel(label)
+    plt.title('Distribution of {}'.format(label))
     plt.show()
 
 
@@ -160,6 +162,12 @@ def split_data(df, predicted='SeriousDlqin2yrs', features=FEATURES, test_size=0.
     return x_train, x_test, y_train, y_test
 
 
+def select_features(data_set, features=FEATURES):
+    '''
+    '''
+    return data_set.filter(features)
+
+
 def knn_models(x_train, y_train, x_test, y_test, metric='minkowski', threshold=0.5):
     '''
     Returns KNN model with the highest accuracy score
@@ -180,7 +188,7 @@ def knn_models(x_train, y_train, x_test, y_test, metric='minkowski', threshold=0
                 knn.fit(x_train, y_train)
                 pred = get_prediction(knn, x_test, y_test, threshold)
                 acc = accuracy_score(y_test, pred[1])
-                print(k, metric, knn.p, wfn, acc)
+                #print(k, metric, knn.p, wfn, acc)
                 model_params.append((k, metric, knn.p, wfn, acc))
 
                 if acc > score:
