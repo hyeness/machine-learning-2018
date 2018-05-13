@@ -2,10 +2,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.preprocessing import normalize
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix
-
+from sklearn.metrics import *
+from os import path
+from math import log
 
 ######################
 #      READ FILE     #
@@ -15,14 +17,18 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 DATA_FILENAME = 'data/credit-data.csv'
 DATA_DICTIONARY = 'data/Data Dictionary.xls'
 
-def read_file(filename, filetype, index=None):
+def read_file(filename, index=None):
     '''
     Reads file into pandas df
     '''
-    if filetype == 'csv':
+    ext = path.split(filename)[-1].split('.')[-1]
+
+    if ext == 'csv':
         return pd.read_csv(filename, index_col=index)
-    if filetype == 'excel':
+    elif ext == 'xls':
         return pd.read_excel(filename, index_col=index)
+    else:
+        print("Not a valid filetype")
 
 
 def create_data_dic(ddf):
@@ -62,24 +68,28 @@ def impute_missing(df, column, fill_type):
         df[column].fillna(df[column].mean(), inplace=True)
 
 
-def cap_outlier(df, column, q=0.999):
+def cap_outlier(df, column, lb=0.001, ub=0.999):
     '''
     cap extreme outliers using quantile specified as max value
     '''
-    cap = df[column].quantile(q)
-    print('Monthly Income was capped at ${}.'.format(cap))
-    df[column] = df[column].apply(cap_value, args=(cap,))
+    lb, ub = df[column].quantile(lb), df[column].quantile(ub)
+    print('Monthly Income was capped between ${} and ${}.'.format(lb, ub))
+    df[column] = df[column].apply(cap_value, args=(lb, ub))
 
 
-def cap_value(x, cap):
+def cap_value(x, lb, ub):
     '''
     helper function that returns cap for values exceeding it,
+    0 for values
     itself otherwise
     '''
-    if x > cap:
-        return cap
+    if x > ub:
+        return ub
+    elif x < lb:
+        return lb
     else:
         return x
+
 
 ######################
 #    EXPLORE DATA    #
@@ -96,14 +106,24 @@ def corr_matrix(df):
     plt.show()
 
 
-def density_plot(df, column, dic):
+def density_plot(df, column, dic, log_=False):
     '''
     Plot density of variable
     Refuses to plot Missing Values
     '''
-    sns.distplot(df[column])
-    plt.title(dic[column])
+    if log_:
+        sns.distplot(df[column].apply(logify))
+        plt.title('Log {}'.format(dic[column]))
+    else:
+        sns.distplot(df[column])
+        plt.title(dic[column])
     plt.show()
+
+def logify(x):
+    if x > 0:
+        return log(x)
+    else:
+        return 0
 
 
 def plot_hist(df, col, label, sort=True):
@@ -141,6 +161,8 @@ def discretize_var(df, col, inc):
                          labels=range(len(boundaries)-1),
                          include_lowest=True, right=True)
 
+def
+
 
 ######################
 #  BUILD CLASSIFIER  #
@@ -153,13 +175,14 @@ FEATURES = ['RevolvingUtilizationOfUnsecuredLines', 'age',
        'NumberOfTime60-89DaysPastDueNotWorse', 'NumberOfDependents']
 
 
-def split_data(df, predicted='SeriousDlqin2yrs', features=FEATURES, test_size=0.3):
+def split_data(df, predicted='SeriousDlqin2yrs', features=FEATURES,
+                test_size=0.3, seed=1):
     '''
     Splits data into train and test
     '''
     X = df.filter(features, axis=1)
     Y = df[predicted]
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
     return x_train, x_test, y_train, y_test
 
 
@@ -171,7 +194,7 @@ def select_features(data_set, features=FEATURES):
 
 
 def knn_models(x_train, y_train, x_test, y_test,
-               ks=[[1, 5, 10, 20, 50, 100], metric='minkowski', threshold=0.5):
+               ks=[1, 5, 10, 20, 50, 100], metric='minkowski', threshold=0.5):
     '''
     Returns KNN model with the highest accuracy score
     '''
@@ -191,7 +214,7 @@ def knn_models(x_train, y_train, x_test, y_test,
                 knn.fit(x_train, y_train)
                 pred = get_prediction(knn, x_test, y_test, threshold)
                 acc = accuracy_score(y_test, pred[1])
-                #print(k, metric, knn.p, wfn, acc)
+                print(k, metric, knn.p, wfn, acc)
                 model_params.append((k, metric, knn.p, wfn, acc))
 
                 if acc > score:
