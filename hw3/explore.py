@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from math import log
-
+from scipy import stats
 
 
 def corr_matrix(df):
@@ -15,17 +15,24 @@ def corr_matrix(df):
     plt.show()
 
 
-def density_plot(df, column, dic, log_=False):
+def density_plot(df, column, log_=False, ignore_null=True):
     '''
     Plot density of variable
     Refuses to plot Missing Values
     '''
-    if log_:
-        sns.distplot(df[column].apply(logify))
-        plt.title('Log {}'.format(dic[column]))
+
+    if ignore_null:
+        x = df[column].dropna()
     else:
-        sns.distplot(df[column])
-        plt.title(dic[column])
+        x = df[column]
+
+    if log_:
+        sns.distplot(x.apply(logify))
+        plt.title('Log {}'.format(column))
+    else:
+        sns.distplot(x)
+        plt.title(column)
+
     plt.show()
 
 def logify(x):
@@ -49,3 +56,32 @@ def plot_hist(df, col, label, sort=True):
     plt.xlabel(label)
     plt.title('Distribution of {}'.format(label))
     plt.show()
+
+
+def count_nulls(df):
+	'''
+	Return number of null values for each column
+	'''
+	return df.isnull().sum()
+
+
+def plot_correlations(df, title):
+	'''
+	Plot heatmap of columns in dataframe
+	'''
+	ax = plt.axes()
+	corr = df.corr()
+	sns.heatmap(corr, xticklabels=corr.columns.values, yticklabels=corr.columns.values, ax=ax)
+	ax.set_title(title)
+
+
+def plot_dist(df, col, title, normal=True):
+	'''
+	Plot distribution of a column
+	'''
+	ax = plt.axes()
+	if normal:
+		sns.distplot(df[col], fit=stats.norm, kde=False, ax=ax)
+	else:
+		sns.distplot(df[col], kde=False, ax=ax)
+	ax.set_title(title)

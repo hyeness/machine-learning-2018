@@ -10,7 +10,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import ParameterGrid, train_test_split
 from sklearn.metrics import *
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import precision_recall_curve
 import random
 import pylab as pl
 import matplotlib.pyplot as plt
