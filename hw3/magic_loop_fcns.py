@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier
+from sklearn import preprocessing, svm, metrics, tree, decomposition
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, AdaBoostClassifier, BaggingClassifier
 from sklearn.linear_model import LogisticRegression, Perceptron, SGDClassifier, OrthogonalMatchingPursuit, RandomizedLogisticRegression
 from sklearn.svm import SVC
 from sklearn.neighbors.nearest_centroid import NearestCentroid
@@ -25,12 +26,13 @@ CLASSIFIERS = {
             'ET': ExtraTreesClassifier(n_estimators=10, n_jobs=-1, criterion='entropy'),
             'AB': AdaBoostClassifier(DecisionTreeClassifier(max_depth=1), algorithm="SAMME", n_estimators=200),
             'LR': LogisticRegression(penalty='l1', C=1e5),
-            'SVM': SVC(kernel='linear', probability=True, random_state=0),
+            'SVM': svm.SVC(kernel='linear', probability=True, random_state=0),
             'GB': GradientBoostingClassifier(learning_rate=0.05, subsample=0.5, max_depth=6, n_estimators=10),
             'NB': GaussianNB(),
             'DT': DecisionTreeClassifier(),
             'SGD': SGDClassifier(loss="hinge", penalty="l2"),
-            'KNN': KNeighborsClassifier(n_neighbors=3)
+            'KNN': KNeighborsClassifier(n_neighbors=3),
+            'BAG': BaggingClassifier(n_estimators=10, max_samples=1.0, max_features=1.0, bootstrap_features=True)
             }
 
 # grid sizes
@@ -57,7 +59,8 @@ SMALL_GRID = {
             'NB': {},
             'DT': {'criterion': ['gini', 'entropy'], 'max_depth': [10,20,50], 'max_features': ['sqrt','log2'],'min_samples_split': [2,5,10]},
             'SVM': {'C': [0.00001,0.0001,0.001,0.01,0.1,1,10], 'kernel': ['linear']},
-            'KNN': {'n_neighbors': [1,5,10],'weights': ['uniform','distance'],'algorithm': ['auto','ball_tree','kd_tree']}
+            'KNN': {'n_neighbors': [1,5,10],'weights': ['uniform','distance'],'algorithm': ['auto','ball_tree','kd_tree']},
+            'BAG': {'n_estimators': [10], 'max_samples': [5], 'max_features': [5, 20], 'bootstrap_features': [False, True]}
        }
 
 TEST_GRID = {
@@ -70,10 +73,10 @@ TEST_GRID = {
             'NB': {},
             'DT': {'criterion': ['gini'], 'max_depth': [1], 'max_features': ['sqrt'],'min_samples_split': [10]},
             'SVM': {'C':[0.01],'kernel':['linear']},
-            'KNN': {'n_neighbors': [5],'weights': ['uniform'],'algorithm': ['auto']}
+            'KNN': {'n_neighbors': [5],'weights': ['uniform'],'algorithm': ['auto']},
+            'BAG': {'n_estimators': [10], 'max_samples': [5], 'max_features': [5], 'bootstrap_features': [True]}
        }
 
-TO_RUN = ['GB','RF','DT','KNN','LR','NB']
 
 def generate_binary_at_k(y_scores, k):
     '''
@@ -92,7 +95,7 @@ def scores_at_k(y_true, y_scores, k):
     recall = recall_score(y_true, preds_at_k)
     return precision, accuracy, recall
 
-def plot_precision_recall_n(y_true, y_prob, model_name):
+def plot_precision_recall_n(y_true, y_prob, model_name, save=True):
     '''
     '''
     y_score = y_prob
@@ -121,4 +124,9 @@ def plot_precision_recall_n(y_true, y_prob, model_name):
 
     name = model_name
     plt.title(name)
-    plt.show()
+
+
+    if save:
+        plt.savefig(name, close=True)
+    else:
+        plt.show()

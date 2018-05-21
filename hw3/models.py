@@ -1,6 +1,7 @@
 from magic_loop_fcns import *
 from preprocess import *
 from features import *
+from datetime import timedelta
 
 def temporal_split(df, col, cutoff_date, validation_date):
     '''
@@ -34,8 +35,9 @@ def tempura_validation_loop(df, cv_pairs=CUTOFF_VAL_PAIRS):
     # define dataframe to write results to
     results_df =  pd.DataFrame(columns=('model_type','clf', 'parameters', 'validation_date',
                                         'train_set_size', 'validation_set_size', 'baseline',
-                                        'precision_at_5','precision_at_10','precision_at_20',
-                                        'recall_at_5','recall_at_10','recall_at_20','auc-roc'))
+                                        'precision_at_5','precision_at_10','precision_at_20', 'precision_at_30', 'precision_at_50',
+                                        'recall_at_5','recall_at_10','recall_at_20', 'recall_at_30', 'recall_at_50',
+                                        'auc-roc','time_elapsed'))
 
     for c, v in cv_pairs:
         print('CUTOFF: {} VALIDATION: {}'.format(c, v))
@@ -44,32 +46,39 @@ def tempura_validation_loop(df, cv_pairs=CUTOFF_VAL_PAIRS):
         X_train, y_train, X_test, y_test = model_ready(*pre_process(train, test))
 
         for i, clf in enumerate([CLASSIFIERS[x] for x in TO_RUN]):
-            #print(TO_RUN[i])
+            print(TO_RUN[i])
             params = GRID[TO_RUN[i]]
+            print(params)
             for p in ParameterGrid(params):
                 try:
-
+                    start_time = time.time()
                     clf.set_params(**p)
                     y_pred_probs = clf.fit(X_train, y_train.values.ravel()).predict_proba(X_test)[:,1]
                     y_pred_probs_sorted, y_test_sorted = zip(*sorted(zip(y_pred_probs, y_test.values.ravel()), reverse=True))
+                    end_time = time.time()
+                    tot_time = end_time - start_time
+                    print(tot_time)
 
                     precision_5, accuracy_5, recall_5 = scores_at_k(y_test_sorted,y_pred_probs_sorted,5.0)
                     precision_10, accuracy_10, recall_10 = scores_at_k(y_test_sorted,y_pred_probs_sorted,10.0)
                     precision_20, accuracy_20, recall_20 = scores_at_k(y_test_sorted,y_pred_probs_sorted,20.0)
+                    precision_30, accuracy_30, recall_30 = scores_at_k(y_test_sorted,y_pred_probs_sorted,30.0)
+                    precision_50, accuracy_50, recall_50 = scores_at_k(y_test_sorted,y_pred_probs_sorted,50.0)
 
                     results_df.loc[len(results_df)] = [TO_RUN[i], clf, p, v,
                                                     y_train.shape[0], y_test.shape[0],
                                                     scores_at_k(y_test_sorted, y_pred_probs_sorted,100.0)[1],
-                                                    precision_5, precision_10, precision_20,
-                                                    recall_5, recall_10, recall_20,
-                                                    roc_auc_score(y_test, y_pred_probs)]
+                                                    precision_5, precision_10, precision_20, precision_30, precision_50,
+                                                    recall_5, recall_10, recall_20, recall_30, recall_50,
+                                                    roc_auc_score(y_test, y_pred_probs),
+                                                    tot_time]
 
-                    #plot_precision_recall_n(y_test,y_pred_probs,clf)
+                    plot_precision_recall_n(y_test, y_pred_probs, clf, False)
 
                 except IndexError:
                     print('Error')
                     continue
-
+            results_df.to_pickle('results.pkl')
     return results_df
 
 

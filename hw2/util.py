@@ -68,7 +68,7 @@ def impute_missing(df, column, fill_type):
         df[column].fillna(df[column].mean(), inplace=True)
 
 
-def cap_outlier(df, column, lb=0.001, ub=0.999):
+def cap_extreme(df, column, lb=0.001, ub=0.999):
     '''
     cap extreme outliers using quantile specified as max value
     '''
@@ -224,7 +224,6 @@ def knn_models(x_train, y_train, x_test, y_test,
     eval_df = pd.DataFrame(model_params, columns=('k', 'metric', 'p', 'weight_fcn', 'accuracy_score'))
 
     return top_model, eval_df
-
 
 
 def get_prediction(model, x_test, y_test, threshold=0.5):

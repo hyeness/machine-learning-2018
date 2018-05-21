@@ -1,6 +1,10 @@
 *.csv
+*.pkl
+*.zip
+
+.DS_Store
 # Byte-compiled / optimized / DLL files
-.ipnb_checkpoints
+.ipynb_checkpoints
 __pycache__/
 .project
 .pydevproject

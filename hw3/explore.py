@@ -42,12 +42,17 @@ def logify(x):
         return 0
 
 
-def plot_hist(df, col, label, sort=True):
+
+def plot_hist(df, col, label, top_k, sort=True):
     '''
     plots histogram of column
     '''
+
     if sort:
-        hist_idx = df[col].value_counts()
+        if top_k:
+            hist_idx = df[col].value_counts().head(top_k)
+        else:
+            hist_idx = df[col].value_counts()
     else:
         hist_idx = df[col].value_counts(sort=False)
 
@@ -56,6 +61,7 @@ def plot_hist(df, col, label, sort=True):
     plt.xlabel(label)
     plt.title('Distribution of {}'.format(label))
     plt.show()
+
 
 
 def count_nulls(df):

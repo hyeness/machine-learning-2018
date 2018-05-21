@@ -23,6 +23,10 @@ def read_file(filename, index=None):
         print("Not a valid filetype")
 
 
+def join_df(df1, df2):
+    return pd.concat([df1, df2], axis=1, join='inner')
+
+
 def check_missing(df):
     '''
     Print column names,  number of missing rows
@@ -129,6 +133,22 @@ def disaggregate_thyme(df, col, interval):
     elif interval == 'month':
         df.loc[:,col_name] = df[col].apply(lambda x: x.month)
 
+def get_season(month):
+    '''
+    Discretizes season based on month
+    season = {
+        'Winter':0, 'Spring':1, 'Summer':2,
+        'Fall':3
+    }
+    '''
+    if month in range(1, 4):
+        return 0
+    elif month in range(4, 7):
+        return 1
+    elif month in range(7, 10):
+        return 2
+    else:
+        return 3
 
 def pre_process(train, test):
     '''
@@ -157,8 +177,10 @@ def pre_process(train, test):
         if col in OTHERS and NORMALIZE == True:
             print('Normalizing: {}'.format(col))
             features.add(col)
-            train.loc[:, col] = normalize(train[[col]], axis=0)
-            test.loc[:, col] = normalize(test[[col]],axis=0)
+            normalize_var(train, col)
+            normalize_var(test, col)
+            # train.loc[:, col] = normalize(train[[col]], axis=0)
+            # test.loc[:, col] = normalize(test[[col]],axis=0)
         if col in THYME:
             features.add('{}_month'.format(col))
             print('Getting month of {}'.format(col))
@@ -169,6 +191,5 @@ def pre_process(train, test):
 
     return train, test, features
 
-
-def join_df(df1, df2):
-    return pd.concat([df1, df2], axis=1, join='inner')
+def normalize_var(df, col):
+    df.loc[:, col] = normalize(df[[col]], axis=0)

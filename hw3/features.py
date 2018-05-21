@@ -5,15 +5,16 @@ from magic_loop_fcns import *
 ##################
 
 # convert bad booleans from t,f to 1,0
-BINARY =['fully_funded', 'school_charter', 'school_magnet', 'school_year_round', 'school_nlns',
-         'school_kipp', 'school_charter_ready_promise', 'teacher_teach_for_america', 'teacher_ny_teaching_fellow',
+BINARY = ['fully_funded', 'school_charter', 'school_magnet', 'school_year_round', 'school_nlns',
+         'school_kipp', 'school_charter_ready_promise', 'teacher_teach_for_america',
+         'teacher_ny_teaching_fellow',
          'eligible_double_your_impact_match', 'eligible_almost_home_match']
 
 # dummify categorical variables using top 5 most frequent values, other or missing otherwise
 CATEGORICAL = ['school_metro', 'primary_focus_subject', 'primary_focus_area',
            'secondary_focus_subject', 'secondary_focus_area',
            'resource_type', 'grade_level', 'school_state', 'school_zip',
-           'teacher_prefix']
+           'teacher_prefix', 'fulfillment_labor_materials']
 
 # ignore for now
 GEOGRAPHICAL = ['school_latitude', 'school_longitude', 'school_city', 'school_state',
@@ -25,10 +26,8 @@ THYME = ['date_posted']
 # drop later
 ID = ['teacher_acctid', 'schoolid', 'school_ncesid']
 
-OTHERS = ['fulfillment_labor_materials', 'total_price_excluding_optional_support',
+OTHERS = ['total_price_excluding_optional_support',
           'total_price_including_optional_support', 'students_reached']
-
-DATE = ['date_posted']
 
 PREDICTED = ['fully_funded']
 
@@ -49,7 +48,7 @@ GRID = TEST_GRID
 DATE_COL = 'date_posted'
 
 # list of classifier models to run
-TO_RUN = ['GB','RF','DT','KNN','LR','NB']
+TO_RUN = ['AB', 'RF', 'DT', 'LR', 'NB', 'KNN', 'BAG']
 
 # cutoff and validation date pairs
 CUTOFF_VAL_PAIRS = [('2011-06-30', '2011-12-31'), ('2011-12-31', '2012-06-30'),
