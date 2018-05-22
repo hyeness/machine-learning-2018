@@ -5,13 +5,16 @@ from math import log
 from scipy import stats
 
 
-def corr_matrix(df):
+def corr_matrix(df, col, save=False, filename=None):
     '''
     Plot correlation between all variables
     '''
-    corr = df.corr()
+    corr = df[col].corr()
     sns.heatmap(corr, xticklabels=corr.columns.values,
                 yticklabels=corr.columns.values)
+    plt.title('Correlation Matrix')
+    if save:
+        plt.savefig(filename)
     plt.show()
 
 
