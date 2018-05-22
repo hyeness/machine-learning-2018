@@ -26,9 +26,8 @@ def model_ready(clean_train, clean_test, features):
     return x_train, y_train, x_test, y_test
 
 
-
 # adapted from Rayid's magic loop
-def tempura_validation_loop(df, cv_pairs=CUTOFF_VAL_PAIRS):
+def tempura_validation_loop(df, cv_pairs, grid_size, to_run, filename, use_importance=False):
     '''
     '''
 
@@ -37,17 +36,26 @@ def tempura_validation_loop(df, cv_pairs=CUTOFF_VAL_PAIRS):
                                         'train_set_size', 'validation_set_size', 'baseline',
                                         'precision_at_5','precision_at_10','precision_at_20', 'precision_at_30', 'precision_at_50',
                                         'recall_at_5','recall_at_10','recall_at_20', 'recall_at_30', 'recall_at_50',
-                                        'auc-roc','time_elapsed'))
+                                        'auc-roc','time_elapsed', 'features_used'))
 
     for c, v in cv_pairs:
         print('CUTOFF: {} VALIDATION: {}'.format(c, v))
 
         train, test = temporal_split(df, DATE_COL, c, v)
-        X_train, y_train, X_test, y_test = model_ready(*pre_process(train, test))
 
-        for i, clf in enumerate([CLASSIFIERS[x] for x in TO_RUN]):
-            print(TO_RUN[i])
-            params = GRID[TO_RUN[i]]
+        X_train, y_train, X_test, y_test = model_ready(*pre_process(train, test))
+        features_used = 'ALL'
+        if use_importance:
+            important = list(feature_importance(X_train, y_train, 20)['feature'])
+            features_used = important
+
+            print(important)
+            X_train = X_train.filter(important)
+            X_test = X_test.filter(important)
+
+        for i, clf in enumerate([CLASSIFIERS[x] for x in to_run]):
+            print(to_run[i])
+            params = grid_size[to_run[i]]
             print(params)
             for p in ParameterGrid(params):
                 try:
@@ -65,20 +73,20 @@ def tempura_validation_loop(df, cv_pairs=CUTOFF_VAL_PAIRS):
                     precision_30, accuracy_30, recall_30 = scores_at_k(y_test_sorted,y_pred_probs_sorted,30.0)
                     precision_50, accuracy_50, recall_50 = scores_at_k(y_test_sorted,y_pred_probs_sorted,50.0)
 
-                    results_df.loc[len(results_df)] = [TO_RUN[i], clf, p, v,
+                    results_df.loc[len(results_df)] = [to_run[i], clf, p, v,
                                                     y_train.shape[0], y_test.shape[0],
                                                     scores_at_k(y_test_sorted, y_pred_probs_sorted,100.0)[1],
                                                     precision_5, precision_10, precision_20, precision_30, precision_50,
                                                     recall_5, recall_10, recall_20, recall_30, recall_50,
                                                     roc_auc_score(y_test, y_pred_probs),
-                                                    tot_time]
+                                                    tot_time, features_used]
 
                     plot_precision_recall_n(y_test, y_pred_probs, clf, False)
 
                 except IndexError:
                     print('Error')
                     continue
-            results_df.to_pickle('results.pkl')
+            results_df.to_pickle(filename)
     return results_df
 
 
@@ -136,7 +144,7 @@ def classifiers_loop(X_train, X_test, y_train, y_test, results_df, k):
                 precision_20, accuracy_20, recall_20 = scores_at_k(y_test_sorted,y_pred_probs_sorted,20.0)
 
                 if k != -1:
-                    results_df.loc[len(results_df)] = [k, TO_RUN[i], clf, p, baseline,
+                    results_df.loc[len(results_df)] = [k, to_run[i], clf, p, baseline,
                                                precision_5, accuracy_5, recall_5,
                                                precision_10, accuracy_10, recall_10,
                                                precision_20, accuracy_20, recall_20,
